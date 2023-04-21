@@ -8,21 +8,26 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-   
+
     /**
      * Gestisce una richiesta di registrazione via api.
      */
     public function register(Request $request)
     {
         // Valido i dati della request
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
+
+        if($validator->fails()) {
+            return ['errors' => $validator->messages()];
+        }
 
         // Se i dati della request passano la validazione allora creo l'utente e il token
         $user = User::create([
@@ -31,7 +36,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password)
         ]);
         $token = $user->createToken('auth_token')->plainTextToken;
-    
+
         return response()->json([
             'user' => $user,
             'access_token' => $token,
@@ -52,6 +57,7 @@ class AuthController extends Controller
         $user = User::where('email', $request['email'])->firstOrFail();
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
+            'user' => $user,
             'access_token' => $token,
             'token_type' => 'Bearer',
         ]);
